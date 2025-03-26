@@ -51,13 +51,18 @@ public class ChessPieceRenderer extends Actor implements Disposable {
                     // Get the screen coordinates for this square
                     Rectangle rect = boardRenderer.getSquareRectangle(square);
                     if (rect != null) {
+                        // Calculate piece size preserving aspect ratio
+                        float pieceSize = Math.min(rect.width, rect.height);
+                        float pieceX = getX() + rect.x + (rect.width - pieceSize) / 2;
+                        float pieceY = getY() + rect.y + (rect.height - pieceSize) / 2;
+                        
                         // Draw the piece
                         batch.draw(
                             pieceTexture,
-                            getX() + rect.x,
-                            getY() + rect.y,
-                            rect.width,
-                            rect.height
+                            pieceX,
+                            pieceY,
+                            pieceSize,
+                            pieceSize
                         );
                     }
                 }

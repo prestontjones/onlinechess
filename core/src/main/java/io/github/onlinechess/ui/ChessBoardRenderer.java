@@ -30,7 +30,7 @@ public class ChessBoardRenderer extends Actor implements Disposable {
     private Map<Square, Rectangle> squareRectangles = new HashMap<>();
     
     // Board style - could be expanded to support multiple styles
-    private String boardTexturePath = "pixle chess/chess boards/board_plain_01.png";
+    private String boardTexturePath = "chess boards/board_plain_01.png";
     
     // Border constant - adjust based on your pixel art
     private final int BORDER_SIZE = 6;

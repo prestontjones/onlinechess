@@ -42,13 +42,15 @@ public class MainMenuScreen extends BaseScreen {
         mainTable.pad(20); // Overall padding
         stage.addActor(mainTable);
 
+        
+
         // Header Section with background
         Table header = new Table();
         header.setBackground(skin.getDrawable("window"));
         header.pad(10);
         
         try {
-            Texture logoTexture = new Texture(Gdx.files.internal("os8ui/logo.png"));
+            Texture logoTexture = new Texture(Gdx.files.internal("raw os8ui/splash.png"));
             logoImage = new Image(logoTexture);
             header.add(logoImage).size(80).padRight(20); // Fixed size for simplicity
         } catch (Exception e) {
@@ -101,7 +103,7 @@ public class MainMenuScreen extends BaseScreen {
         offlineButton.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent event, Actor actor) {
                 Gdx.app.log("Chess", "Offline Game button clicked");
-                // game.setScreen(new ChessBoardScreen(game));
+                game.setScreen(new ChessBoardScreen(game, false));
             }
         });
         
