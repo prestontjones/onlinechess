@@ -11,7 +11,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 
-import io.github.onlinechess.ChessGame;
 import io.github.onlinechess.Main;
 import io.github.onlinechess.ui.dialogs.HostGameDialog;
 import io.github.onlinechess.ui.dialogs.JoinGameDialog;
@@ -102,8 +101,7 @@ public class MainMenuScreen extends BaseScreen {
         offlineButton.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent event, Actor actor) {
                 Gdx.app.log("Chess", "Offline Game button clicked");
-                ((ChessGame)game).startOfflineGame(); //Cannot cast from Main to ChessGameJava(16777372)
-                // incompatible types: Main cannot be converted to ChessGame(errors(1): 105:17-105:54)
+                // game.setScreen(new ChessBoardScreen(game));
             }
         });
         

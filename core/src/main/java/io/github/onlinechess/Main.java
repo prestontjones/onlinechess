@@ -2,6 +2,7 @@ package io.github.onlinechess;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle;
@@ -71,5 +72,10 @@ public class Main extends Game {
      */
     public GameSettings getGameSettings() {
         return gameSettings;
+    }
+
+    public AssetManager getAssetManager() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getAssetManager'");
     }
 }

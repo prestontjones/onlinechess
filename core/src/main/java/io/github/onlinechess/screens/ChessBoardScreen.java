@@ -1,152 +1,174 @@
 package io.github.onlinechess.screens;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.github.bhlangonijr.chesslib.Board;
 import com.github.bhlangonijr.chesslib.Piece;
 import com.github.bhlangonijr.chesslib.Square;
 
-import io.github.onlinechess.ChessGame;
+import io.github.onlinechess.Main;
 
-public class ChessBoardScreen implements Screen {
-    private final ChessGame game;
-    private final Stage stage;
-    private final Skin skin;
-    private final Board chessBoard;
-    
+/**
+ * Screen that displays the chess board and game UI
+ */
+public class ChessBoardScreen extends BaseScreen {
     // Board dimensions
-    private final float squareSize = 64f;
-    private final float boardSize = squareSize * 8;
+    private final float BOARD_SIZE = 480f;
+    private final float SQUARE_SIZE = BOARD_SIZE / 8f;
     
-    // Chess piece textures
-    private final Texture whitePawn, whiteRook, whiteKnight, whiteBishop, whiteQueen, whiteKing;
-    private final Texture blackPawn, blackRook, blackKnight, blackBishop, blackQueen, blackKing;
+    // Game state
+    private Board chessBoard;
+    private boolean boardFlipped = false;
+    private boolean isOnlineMode = false;
     
-    // Error message
-    private final Label errorLabel;
+    // UI Components
+    private Table boardTable;
+    private Table chatPanel;
     
-    public ChessBoardScreen(ChessGame game) {
-        this.game = game;
-        this.chessBoard = new Board(); // This creates a board in standard starting position
+    // Resources
+    private Texture boardTexture;
+    private TextureAtlas pieceAtlas;
+    
+    /**
+     * Creates a new chess board screen
+     * 
+     * @param game The game instance
+     * @param isOnlineMode Whether the game is in online mode
+     */
+    public ChessBoardScreen(Main game, boolean isOnlineMode) {
+        super(game);
+        this.isOnlineMode = isOnlineMode;
         
-        // Load the skin
-        skin = new Skin(Gdx.files.internal("skins/os-eight/os-eight.json"));
+        // Create a fresh chess board (this would come from the server in practice)
+        this.chessBoard = new Board();
         
-        // Initialize UI
-        stage = new Stage(new ScreenViewport());
-        Gdx.input.setInputProcessor(stage);
-        
-        // Load chess piece textures
-        whitePawn = new Texture("textures/white_pawn.png");
-        whiteRook = new Texture("textures/white_rook.png");
-        whiteKnight = new Texture("textures/white_knight.png");
-        whiteBishop = new Texture("textures/white_bishop.png");
-        whiteQueen = new Texture("textures/white_queen.png");
-        whiteKing = new Texture("textures/white_king.png");
-        
-        blackPawn = new Texture("textures/black_pawn.png");
-        blackRook = new Texture("textures/black_rook.png");
-        blackKnight = new Texture("textures/black_knight.png");
-        blackBishop = new Texture("textures/black_bishop.png");
-        blackQueen = new Texture("textures/black_queen.png");
-        blackKing = new Texture("textures/black_king.png");
-        
-        // Create main layout
-        Table mainTable = new Table();
-        mainTable.setFillParent(true);
-        
-        // Error message label
-        errorLabel = new Label("", skin);
-        errorLabel.setAlignment(Align.center);
-        errorLabel.setWrap(true);
-        
-        // Add error label at top
-        mainTable.add(errorLabel).colspan(2).expandX().fillX().pad(10).row();
-        
-        // Create empty board table (actual board is drawn in render)
-        Table boardTable = new Table();
-        boardTable.setBackground(skin.getDrawable("window"));
-        
-        // Create chat panel
-        Table chatTable = new Table();
-        chatTable.setBackground(skin.getDrawable("window"));
-        Label chatLabel = new Label("Chat area (to be implemented)", skin);
-        chatLabel.setWrap(true);
-        chatTable.add(chatLabel).expand().fill().pad(10);
-        
-        // Add board and chat to the main table
-        mainTable.add(boardTable).width(boardSize).height(boardSize).pad(10);
-        mainTable.add(chatTable).width(300).height(boardSize).pad(10).fillY();
-        
-        stage.addActor(mainTable);
+        // Create UI
+        createUI();
     }
     
-    @Override
-    public void show() {
-        Gdx.input.setInputProcessor(stage);
+    /**
+     * Creates the screen UI
+     */
+    private void createUI() {
+        // Create a main table that fills the screen
+        Table mainTable = new Table();
+        mainTable.setFillParent(true);
+        mainTable.pad(20);
+        stage.addActor(mainTable);
+        
+        // Create status label at the top
+        Label statusLabel = new Label("Chess Game", skin);
+        statusLabel.setAlignment(Align.center);
+        statusLabel.setWrap(true);
+        mainTable.add(statusLabel).colspan(2).expandX().fillX().pad(10).row();
+        
+        // Create board table for the chess board
+        boardTable = new Table();
+        boardTable.setBackground(skin.getDrawable("window"));
+        
+        // Create chat panel if in online mode
+        if (isOnlineMode) {
+            chatPanel = new Table();
+            chatPanel.setBackground(skin.getDrawable("window"));
+            
+            // Chat header
+            Label chatLabel = new Label("Chat", skin, "medium");
+            chatPanel.add(chatLabel).expandX().fillX().pad(10).row();
+            
+            // Placeholder for chat content
+            Table chatContent = new Table();
+            chatContent.setBackground(skin.getDrawable("white-rect"));
+            chatPanel.add(chatContent).expand().fill().pad(10).row();
+            
+            // Chat input (placeholder)
+            Table chatInput = new Table();
+            chatInput.setBackground(skin.getDrawable("textfield"));
+            chatPanel.add(chatInput).expandX().fillX().height(40).pad(10);
+            
+            // Add board and chat to the main table
+            mainTable.add(boardTable).width(BOARD_SIZE).height(BOARD_SIZE).pad(10);
+            mainTable.add(chatPanel).width(300).height(BOARD_SIZE).pad(10).fillY();
+        } else {
+            // Just the board for offline mode
+            mainTable.add(boardTable).width(BOARD_SIZE).height(BOARD_SIZE).pad(10).expand();
+        }
+        
+        // Add a flip board button
+        TextButton flipBoardButton = new TextButton("Flip Board", skin);
+        flipBoardButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                boardFlipped = !boardFlipped;
+            }
+        });
+        
+        // Add back to menu button
+        TextButton menuButton = new TextButton("Main Menu", skin);
+        menuButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.setScreen(new MainMenuScreen(game));
+            }
+        });
+        
+        // Add buttons to a control panel
+        Table controlPanel = new Table();
+        controlPanel.defaults().pad(5).fillX();
+        controlPanel.add(flipBoardButton).row();
+        controlPanel.add(menuButton).row();
+        
+        // Add the control panel if not in online mode
+        if (!isOnlineMode) {
+            mainTable.add(controlPanel).width(200).top().pad(10);
+        }
     }
     
     @Override
     public void render(float delta) {
-        // Clear the screen
-        Gdx.gl.glClearColor(0.2f, 0.2f, 0.2f, 1);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        // Clear the screen (handled by BaseScreen)
+        super.render(delta);
         
-        // Update the stage
-        stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1/30f));
-        stage.draw();
-        
-        // Draw the chess board and pieces
+        // Draw the chess board and pieces using SpriteBatch
         SpriteBatch batch = game.getBatch();
         batch.begin();
         
-        // Calculate the center of the screen for board positioning
-        float screenWidth = Gdx.graphics.getWidth();
-        float screenHeight = Gdx.graphics.getHeight();
-        float boardX = (screenWidth - boardSize) / 2;
-        float boardY = (screenHeight - boardSize) / 2;
+        // Calculate board position (centered in the boardTable)
+        float boardX = boardTable.getX() + (boardTable.getWidth() - BOARD_SIZE) / 2;
+        float boardY = boardTable.getY() + (boardTable.getHeight() - BOARD_SIZE) / 2;
         
-        // Draw the board squares
-        for (int row = 0; row < 8; row++) {
-            for (int col = 0; col < 8; col++) {
-                // Determine square color (alternating pattern)
-                boolean isLightSquare = (row + col) % 2 == 0;
+        // Draw the board
+        batch.draw(boardTexture, boardX, boardY, BOARD_SIZE, BOARD_SIZE);
+        
+        // Draw the pieces
+        for (Square square : Square.values()) {
+            Piece piece = chessBoard.getPiece(square);
+            if (piece != Piece.NONE) {
+                // Calculate square position
+                int file = square.getFile().ordinal();
+                int rank = square.getRank().ordinal();
                 
-                // Draw the square
-                if (isLightSquare) {
-                    batch.setColor(0.9f, 0.9f, 0.8f, 1); // Light square color
-                } else {
-                    batch.setColor(0.5f, 0.5f, 0.4f, 1); // Dark square color
+                // Flip coordinates if board is flipped
+                if (boardFlipped) {
+                    file = 7 - file;
+                    rank = 7 - rank;
                 }
                 
-                float squareX = boardX + col * squareSize;
-                float squareY = boardY + (7 - row) * squareSize; // Flip rows to match chess notation
+                float squareX = boardX + file * SQUARE_SIZE;
+                float squareY = boardY + rank * SQUARE_SIZE;
                 
-                // Draw square as a filled rectangle
-                Texture whiteTexture = game.getAssetManager().get("textures/white.png", Texture.class);
-                batch.draw(whiteTexture, squareX, squareY, squareSize, squareSize);
+                // Get the piece texture
+                String regionName = getPieceRegionName(piece);
+                TextureAtlas.AtlasRegion region = pieceAtlas.findRegion(regionName);
                 
-                // Reset color for piece drawing
-                batch.setColor(1, 1, 1, 1);
-                
-                // Get the chess piece at this square and draw it if there is one
-                Square square = Square.values()[row * 8 + col];
-                Piece piece = chessBoard.getPiece(square);
-                
-                if (piece != Piece.NONE) {
-                    Texture pieceTexture = getPieceTexture(piece);
-                    if (pieceTexture != null) {
-                        batch.draw(pieceTexture, squareX, squareY, squareSize, squareSize);
-                    }
+                if (region != null) {
+                    batch.draw(region, squareX, squareY, SQUARE_SIZE, SQUARE_SIZE);
                 }
             }
         }
@@ -154,65 +176,38 @@ public class ChessBoardScreen implements Screen {
         batch.end();
     }
     
-    private Texture getPieceTexture(Piece piece) {
+    /**
+     * Gets the texture region name for a chess piece
+     * 
+     * @param piece The chess piece
+     * @return The name of the texture region
+     */
+    private String getPieceRegionName(Piece piece) {
         switch (piece) {
-            case WHITE_PAWN: return whitePawn;
-            case WHITE_ROOK: return whiteRook;
-            case WHITE_KNIGHT: return whiteKnight;
-            case WHITE_BISHOP: return whiteBishop;
-            case WHITE_QUEEN: return whiteQueen;
-            case WHITE_KING: return whiteKing;
-            case BLACK_PAWN: return blackPawn;
-            case BLACK_ROOK: return blackRook;
-            case BLACK_KNIGHT: return blackKnight;
-            case BLACK_BISHOP: return blackBishop;
-            case BLACK_QUEEN: return blackQueen;
-            case BLACK_KING: return blackKing;
+            case WHITE_PAWN: return "W_Pawn";
+            case WHITE_KNIGHT: return "W_Knight";
+            case WHITE_BISHOP: return "W_Bishop";
+            case WHITE_ROOK: return "W_Rook";
+            case WHITE_QUEEN: return "W_Queen";
+            case WHITE_KING: return "W_King";
+            case BLACK_PAWN: return "B_Pawn";
+            case BLACK_KNIGHT: return "B_Knight";
+            case BLACK_BISHOP: return "B_Bishop";
+            case BLACK_ROOK: return "B_Rook";
+            case BLACK_QUEEN: return "B_Queen";
+            case BLACK_KING: return "B_King";
             default: return null;
         }
     }
     
-    public void displayError(String message) {
-        errorLabel.setText(message);
-    }
-    
     @Override
     public void resize(int width, int height) {
-        stage.getViewport().update(width, height, true);
-    }
-    
-    @Override
-    public void pause() {
-        // Not needed for now
-    }
-    
-    @Override
-    public void resume() {
-        // Not needed for now
-    }
-    
-    @Override
-    public void hide() {
-        // Not needed for now
+        super.resize(width, height);
     }
     
     @Override
     public void dispose() {
-        stage.dispose();
-        skin.dispose();
-        
-        // Dispose textures
-        whitePawn.dispose();
-        whiteRook.dispose();
-        whiteKnight.dispose();
-        whiteBishop.dispose();
-        whiteQueen.dispose();
-        whiteKing.dispose();
-        blackPawn.dispose();
-        blackRook.dispose();
-        blackKnight.dispose();
-        blackBishop.dispose();
-        blackQueen.dispose();
-        blackKing.dispose();
+        super.dispose();
+        // Assets are managed by the AssetManager, which is disposed elsewhere
     }
 }

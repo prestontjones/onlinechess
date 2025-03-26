@@ -17,7 +17,7 @@ public class GameSettings {
     private String serverAddress = "localhost";
     
     // Game settings
-    private int aiDifficulty = 1; // 1-3 (Easy, Medium, Hard)
+    private int aiDifficulty = 2; // 1-3 (Easy, Medium, Hard)
     private boolean aiCommentaryEnabled = true;
     
     // Constructors
