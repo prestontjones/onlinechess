@@ -51,24 +51,37 @@ public class ChessPieceRenderer extends Actor implements Disposable {
                     // Get the screen coordinates for this square
                     Rectangle rect = boardRenderer.getSquareRectangle(square);
                     if (rect != null) {
-                        // Calculate piece size preserving aspect ratio
-                        float pieceSize = Math.min(rect.width, rect.height);
-                        float pieceX = getX() + rect.x + (rect.width - pieceSize) / 2;
-                        float pieceY = getY() + rect.y + (rect.height - pieceSize) / 2;
-                        
-                        // Draw the piece
+                        // Get texture's aspect ratio (16x32 -> 1:2)
+                        float textureAspect = (float) pieceTexture.getRegionWidth() / pieceTexture.getRegionHeight(); // 16 / 32 = 0.5
+
+                        // Fit within the square while maintaining aspect ratio
+                        float targetWidth = rect.width;
+                        float targetHeight = targetWidth / textureAspect;
+
+                        if (targetHeight > rect.height) {
+                            // If height exceeds square, scale based on height
+                            targetHeight = rect.height;
+                            targetWidth = targetHeight * textureAspect;
+                        }
+
+                        // Center the piece in the square
+                        float pieceX = getX() + rect.x + (rect.width - targetWidth) / 2;
+                        float pieceY = getY() + rect.y + (rect.height - targetHeight) / 2;
+
+                        // Draw the piece with correct aspect ratio
                         batch.draw(
                             pieceTexture,
                             pieceX,
                             pieceY,
-                            pieceSize,
-                            pieceSize
+                            targetWidth,
+                            targetHeight
                         );
                     }
                 }
             }
         }
     }
+
     
     /**
      * Gets the texture for a specific chess piece.

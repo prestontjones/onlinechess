@@ -1,7 +1,5 @@
 package io.github.onlinechess.screens;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -18,9 +16,6 @@ import io.github.onlinechess.Main;
 import io.github.onlinechess.ui.ChessBoardRenderer;
 import io.github.onlinechess.ui.ChessPieceRenderer;
 
-/**
- * Screen that displays the chess board with a modern, chess.com-inspired layout
- */
 public class ChessBoardScreen extends BaseScreen {
     // Layout settings
     private final float BOARD_PADDING = 20f;
@@ -80,7 +75,7 @@ public class ChessBoardScreen extends BaseScreen {
         boardTexture = new Texture("chess boards/board_plain_01.png");
         
         // Load the piece atlas directly
-        pieceAtlas = new TextureAtlas("chess peices/chess peices.atlas");
+        pieceAtlas = new TextureAtlas("chess pieces/chess pieces.atlas");
     }
     
     /**
@@ -165,8 +160,16 @@ public class ChessBoardScreen extends BaseScreen {
         
         leftPanel.add(controlsArea).expandX().fillX().row();
         
-        // Empty space
-        leftPanel.add().expand().row();
+        // Move history section (moved from right panel)
+        Label moveHistoryLabel = new Label("Move History", skin);
+        moveHistoryLabel.setAlignment(Align.center);
+        leftPanel.add(moveHistoryLabel).expandX().fillX().padTop(20).row();
+        
+        moveHistoryArea = new Table();
+        moveHistoryArea.setBackground(skin.getDrawable("white-rect"));
+        // Empty container for move history - will be filled by a separate class
+        
+        leftPanel.add(moveHistoryArea).expandX().fillX().expand().row();
         
         // Bottom player area (you)
         bottomPlayerArea = new Table();
@@ -195,62 +198,22 @@ public class ChessBoardScreen extends BaseScreen {
         rightPanel.setBackground(skin.getDrawable("white-rect"));
         rightPanel.top().padTop(10).padRight(10).padLeft(10);
         
-        // Move history section
-        Label moveHistoryLabel = new Label("Move History", skin);
-        moveHistoryLabel.setAlignment(Align.center);
-        rightPanel.add(moveHistoryLabel).expandX().fillX().row();
-        
-        moveHistoryArea = new Table();
-        moveHistoryArea.setBackground(skin.getDrawable("white-rect"));
-        moveHistoryArea.top().pad(10);
-        
-        // Add placeholder move history items
-        Table moveRow1 = new Table();
-        moveRow1.add(new Label("1.", skin)).width(30).left();
-        moveRow1.add(new Label("e4", skin)).width(70).left();
-        moveRow1.add(new Label("e5", skin)).width(70).left();
-        moveHistoryArea.add(moveRow1).expandX().fillX().row();
-        
-        Table moveRow2 = new Table();
-        moveRow2.add(new Label("2.", skin)).width(30).left();
-        moveRow2.add(new Label("Nf3", skin)).width(70).left();
-        moveRow2.add(new Label("Nc6", skin)).width(70).left();
-        moveHistoryArea.add(moveRow2).expandX().fillX().row();
-        
-        rightPanel.add(moveHistoryArea).expandX().fillX().height(300).row();
-        
         // Chat section (only if in online mode)
         if (isOnlineMode) {
             Label chatLabel = new Label("Chat", skin);
             chatLabel.setAlignment(Align.center);
-            rightPanel.add(chatLabel).expandX().fillX().padTop(20).row();
+            rightPanel.add(chatLabel).expandX().fillX().row();
             
             chatArea = new Table();
             chatArea.setBackground(skin.getDrawable("white-rect"));
-            chatArea.top().pad(10);
+            // Empty container for chat - will be filled by a separate class
             
-            // Add placeholder chat messages
-            Table messageRow1 = new Table();
-            messageRow1.left();
-            Label sender1 = new Label("Opponent: ", skin);
-            sender1.setColor(Color.LIGHT_GRAY);
-            Label message1 = new Label("Good luck!", skin);
-            messageRow1.add(sender1).left();
-            messageRow1.add(message1).expandX().fillX().left();
-            chatArea.add(messageRow1).expandX().fillX().padTop(2).row();
-            
-            Table messageRow2 = new Table();
-            messageRow2.left();
-            Label sender2 = new Label("You: ", skin);
-            Label message2 = new Label("Thanks, you too!", skin);
-            messageRow2.add(sender2).left();
-            messageRow2.add(message2).expandX().fillX().left();
-            chatArea.add(messageRow2).expandX().fillX().padTop(5).row();
-            
-            rightPanel.add(chatArea).expand().fill().padBottom(10);
+            rightPanel.add(chatArea).expand().fill();
         } else {
-            // If not in online mode, add empty space
-            rightPanel.add().expand();
+            // If not in online mode, just add an empty placeholder
+            Label offlineLabel = new Label("Chat not available in offline mode", skin);
+            offlineLabel.setAlignment(Align.center);
+            rightPanel.add(offlineLabel).expand().fill();
         }
     }
     
@@ -306,7 +269,7 @@ public class ChessBoardScreen extends BaseScreen {
         updateBoardSize();
         
         // Log for debugging
-        Gdx.app.log("ChessBoardScreen", "Resized to " + width + "x" + height);
+        // Gdx.app.log("ChessBoardScreen", "Resized to " + width + "x" + height);
     }
     
     /**
@@ -333,7 +296,7 @@ public class ChessBoardScreen extends BaseScreen {
     private void updateBoardSize() {
         if (boardRenderer != null && pieceRenderer != null && boardContainer != null) {
             // Remove old coordinate labels
-            for (Actor actor : new Array<Actor>(boardContainer.getChildren())) {
+            for (Actor actor : new Array<>(boardContainer.getChildren())) {
                 if (actor instanceof Label) {
                     actor.remove();
                 }

@@ -25,6 +25,7 @@ public class ChessBoardRenderer extends Actor implements Disposable {
     private int boardWidth, boardHeight;
     private float boardScale = 1.0f;
     private float minSize = 320f; // Minimum board size in pixels
+    private boolean debugMode = false;
     
     // Square mapping
     private Map<Square, Rectangle> squareRectangles = new HashMap<>();
@@ -33,11 +34,9 @@ public class ChessBoardRenderer extends Actor implements Disposable {
     private String boardTexturePath = "chess boards/board_plain_01.png";
     
     // Border constant - adjust based on your pixel art
-    private final int BORDER_SIZE = 6;
+    private final int BORDER_SIZE = 7;
     
-    /**
-     * Creates a new chess board renderer.
-     */
+    // Creates a new chess board renderer.
     public ChessBoardRenderer() {
         loadBoardTexture();
         addListener(new InputListener() {
@@ -53,10 +52,8 @@ public class ChessBoardRenderer extends Actor implements Disposable {
             }
         });
     }
-    
-    /**
-     * Loads the board texture and sets initial dimensions.
-     */
+
+    // Loads the board texture and sets initial dimensions.
     private void loadBoardTexture() {
         boardTexture = new Texture(Gdx.files.internal(boardTexturePath));
         boardWidth = boardTexture.getWidth();
@@ -65,9 +62,8 @@ public class ChessBoardRenderer extends Actor implements Disposable {
         calculateSquarePositions();
     }
     
-    /**
-     * Calculates the positions of all 64 squares on the board.
-     */
+
+    //Calculates the positions of all 64 squares on the board.
     private void calculateSquarePositions() {
         squareRectangles.clear();
         
@@ -132,17 +128,11 @@ public class ChessBoardRenderer extends Actor implements Disposable {
         return squareRectangles.get(square);
     }
     
-    /**
-     * Flips the board orientation.
-     */
     public void flipBoard() {
         flipped = !flipped;
         calculateSquarePositions();
     }
     
-    /**
-     * Returns whether the board is currently flipped.
-     */
     public boolean isFlipped() {
         return flipped;
     }
@@ -171,16 +161,10 @@ public class ChessBoardRenderer extends Actor implements Disposable {
             getX(), getY(),
             getWidth(), getHeight()
         );
-        
-        // Debug drawing - uncomment to see square boundaries
-        /*
-        ShapeRenderer shapeRenderer = new ShapeRenderer();
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        for (Rectangle rect : squareRectangles.values()) {
-            shapeRenderer.rect(getX() + rect.x, getY() + rect.y, rect.width, rect.height);
+
+        if (debugMode) {
+            drawDebugSquares(batch);
         }
-        shapeRenderer.end();
-        */
     }
     
     @Override
@@ -207,6 +191,56 @@ public class ChessBoardRenderer extends Actor implements Disposable {
         
         // Recalculate square positions with the new size
         calculateSquarePositions();
+    }
+
+    public void toggleDebugMode() {
+        debugMode = !debugMode;
+    }
+
+    private void drawDebugSquares(Batch batch) {
+        
+        // Simple 1-pixel white texture for drawing lines
+        Texture debugTexture = new Texture(Gdx.files.internal("raw os8ui/white.png"));
+        
+        try {
+            // Draw each square outline
+            for (Map.Entry<Square, Rectangle> entry : squareRectangles.entrySet()) {
+                Rectangle rect = entry.getValue();
+                Square square = entry.getKey();
+                
+                // Different colors for ranks and files for better visualization
+                // Files (A-H) alternate between red and blue
+                // Ranks (1-8) have increasing green component
+                
+                int file = square.getFile().ordinal();
+                int rank = square.getRank().ordinal();
+                
+                // Set color based on square position
+                if ((file + rank) % 2 == 0) {
+                    batch.setColor(1, 0, 0, 0.5f); // Red for light squares
+                } else {
+                    batch.setColor(0, 0, 1, 0.5f); // Blue for dark squares
+                }
+                
+                float lineWidth = 2f;
+                
+                // Draw rectangle outline
+                float x = getX() + rect.x;
+                float y = getY() + rect.y;
+                
+                // Top line
+                batch.draw(debugTexture, x, y + rect.height - lineWidth, rect.width, lineWidth);
+                // Bottom line
+                batch.draw(debugTexture, x, y, rect.width, lineWidth);
+                // Left line
+                batch.draw(debugTexture, x, y, lineWidth, rect.height);
+                // Right line
+                batch.draw(debugTexture, x + rect.width - lineWidth, y, lineWidth, rect.height);
+            }
+        } finally {
+            // No need to dispose debugTexture here as it could be reused
+            // In a real implementation, you might want to create and dispose this texture once
+        }
     }
     
     @Override
