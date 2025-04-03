@@ -103,7 +103,7 @@ public class MainMenuScreen extends BaseScreen {
         offlineButton.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent event, Actor actor) {
                 Gdx.app.log("Chess", "Offline Game button clicked");
-                game.setScreen(new ChessBoardScreen(game, false));
+                game.setScreen(new ChessBoardScreen(game));
             }
         });
         

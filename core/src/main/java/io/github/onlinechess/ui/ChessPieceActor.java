@@ -1,155 +1,208 @@
 package io.github.onlinechess.ui;
 
 import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.utils.Disposable;
-import com.github.bhlangonijr.chesslib.Board;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.github.bhlangonijr.chesslib.Piece;
+import com.github.bhlangonijr.chesslib.Side;
 import com.github.bhlangonijr.chesslib.Square;
+import com.github.bhlangonijr.chesslib.move.Move;
+
+import io.github.onlinechess.controllers.ChessPieceController;
+import io.github.onlinechess.utils.ChessPlayer;
 
 /**
- * Renders chess pieces on top of a ChessBoardRenderer
+ * Renders a chess piece and handles its movement
  */
-public class ChessPieceRenderer extends Actor implements Disposable {
-    private final ChessBoardRenderer boardRenderer;
-    private final Board chessBoard;
-    private final TextureAtlas pieceAtlas;
+public class ChessPieceActor extends Actor {
+    private ChessPieceController controller;
+    private ChessBoardActor chessBoardActor;
+    private ChessThemeSetter themeSetter;
+    private TextureRegion pieceTexture;
+    private Square currentSquare; // Logical square where this piece is located
+    private Piece chessPiece; // The actual chess piece type
+    private ChessPlayer player;
+    private boolean isDragging = false;
+    private float originalX, originalY; // Original position before drag
+
+    /**
+     * Creates a new chess piece actor.
+     * 
+     * @param boardActor The board actor to draw pieces on
+     * @param themeSetter The theme setter for obtaining piece textures
+     * @param piece The chess piece type
+     * @param startSquare The starting square for this piece
+     * @param player The player who controls this piece
+     */
+    public ChessPieceActor(ChessBoardActor boardActor, ChessThemeSetter themeSetter, 
+                          Piece piece, Square startSquare, ChessPlayer player) {
+        this.chessBoardActor = boardActor;
+        this.themeSetter = themeSetter;
+        this.chessPiece = piece;
+        this.currentSquare = startSquare;
+        this.player = player;
+        
+        // Get the appropriate texture for this piece
+        this.pieceTexture = themeSetter.getPieceTextureRegion(piece);
+        
+        // Add an input listener to handle click/drag events
+        addListener(new InputListener() {
+            private float offsetX, offsetY;
+
+            @Override
+            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                // Only allow dragging if it's this player's turn and piece
+                if (player.getSide() != chessPiece.getPieceSide()) {
+                    return false;
+                }
+                
+                // Capture the touch offset relative to the actor for smooth dragging
+                offsetX = x;
+                offsetY = y;
+                
+                // Store original position for snapping back if needed
+                originalX = getX();
+                originalY = getY();
+                
+                isDragging = true;
+                
+                // Bring this piece to the front
+                toFront();
+                
+                return true;
+            }
+
+            @Override
+            public void touchDragged(InputEvent event, float x, float y, int pointer) {
+                // Update the actor's position so it follows the drag
+                float newX = getX() + x - offsetX;
+                float newY = getY() + y - offsetY;
+                setPosition(newX, newY);
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
+                isDragging = false;
+                
+                // Get absolute screen coordinates
+                float screenX = getX() + x;
+                float screenY = getY() + y;
+                
+                // Find the destination square
+                Square destinationSquare = chessBoardActor.screenToSquare(screenX, screenY);
+                
+                // If the controller is set, request the move
+                if (controller != null && destinationSquare != null && currentSquare != destinationSquare) {
+                    Move move = new Move(currentSquare, destinationSquare);
+                    boolean moveMade = controller.attemptMove(player, move);
+                    if (!moveMade) {
+                        // If move is not valid, snap back to original position
+                        snapToSquare(currentSquare);
+                    }
+                } else {
+                    // If no controller or invalid square, just snap back
+                    snapToSquare(currentSquare);
+                }
+            }
+        });
+        
+        // Initialize position
+        snapToSquare(startSquare);
+    }
     
     /**
-     * Creates a new chess piece renderer.
-     * 
-     * @param boardRenderer The board renderer to draw pieces on
-     * @param chessBoard The chess board model with piece positions
-     * @param pieceAtlas TextureAtlas containing piece textures
+     * Sets the chess piece controller for this actor
      */
-    public ChessPieceRenderer(ChessBoardRenderer boardRenderer, Board chessBoard, TextureAtlas pieceAtlas) {
-        this.boardRenderer = boardRenderer;
-        this.chessBoard = chessBoard;
-        this.pieceAtlas = pieceAtlas;
-        
-        // Match the size and position of the board
-        setBounds(
-            boardRenderer.getX(),
-            boardRenderer.getY(),
-            boardRenderer.getWidth(),
-            boardRenderer.getHeight()
-        );
+    public void setController(ChessPieceController controller) {
+        this.controller = controller;
+    }
+    
+    /**
+     * Snaps this piece to a specific square on the board
+     */
+    public void snapToSquare(Square square) {
+        if (chessBoardActor != null && square != null) {
+            // Update the current square
+            currentSquare = square;
+            
+            // Get the rectangle for the square
+            com.badlogic.gdx.math.Rectangle squareRect = chessBoardActor.getSquareRectangle(square);
+            if (squareRect != null) {
+                // Calculate the position relative to the board
+                float pieceX = chessBoardActor.getX() + squareRect.x;
+                float pieceY = chessBoardActor.getY() + squareRect.y;
+                
+                // Position the piece
+                setPosition(pieceX, pieceY);
+                
+                // Adjust the piece size to fit the square
+                setSize(squareRect.width, squareRect.height);
+            }
+        }
     }
     
     @Override
     public void draw(Batch batch, float parentAlpha) {
-        // Draw each piece on the board
-        for (Square square : Square.values()) {
-            Piece piece = chessBoard.getPiece(square);
-            if (piece != Piece.NONE) {
-                // Get the texture for this piece
-                TextureRegion pieceTexture = getPieceTexture(piece);
-                if (pieceTexture != null) {
-                    // Get the screen coordinates for this square
-                    Rectangle rect = boardRenderer.getSquareRectangle(square);
-                    if (rect != null) {
-                        // Get texture's aspect ratio (16x32 -> 1:2)
-                        float textureAspect = (float) pieceTexture.getRegionWidth() / pieceTexture.getRegionHeight(); // 16 / 32 = 0.5
-
-                        // Fit within the square while maintaining aspect ratio
-                        float targetWidth = rect.width;
-                        float targetHeight = targetWidth / textureAspect;
-
-                        if (targetHeight > rect.height) {
-                            // If height exceeds square, scale based on height
-                            targetHeight = rect.height;
-                            targetWidth = targetHeight * textureAspect;
-                        }
-
-                        // Center the piece in the square
-                        float pieceX = getX() + rect.x + (rect.width - targetWidth) / 2;
-                        float pieceY = getY() + rect.y + (rect.height - targetHeight) / 2;
-
-                        // Draw the piece with correct aspect ratio
-                        batch.draw(
-                            pieceTexture,
-                            pieceX,
-                            pieceY,
-                            targetWidth,
-                            targetHeight
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    
-    /**
-     * Gets the texture for a specific chess piece.
-     * 
-     * @param piece The chess piece
-     * @return TextureRegion for the piece
-     */
-    private TextureRegion getPieceTexture(Piece piece) {
-        String regionName = "";
+        if (pieceTexture == null) return;
         
-        switch (piece) {
-            case WHITE_PAWN:
-                regionName = "W_Pawn";
-                break;
-            case WHITE_KNIGHT:
-                regionName = "W_Knight";
-                break;
-            case WHITE_BISHOP:
-                regionName = "W_Bishop";
-                break;
-            case WHITE_ROOK:
-                regionName = "W_Rook";
-                break;
-            case WHITE_QUEEN:
-                regionName = "W_Queen";
-                break;
-            case WHITE_KING:
-                regionName = "W_King";
-                break;
-            case BLACK_PAWN:
-                regionName = "B_Pawn";
-                break;
-            case BLACK_KNIGHT:
-                regionName = "B_Knight";
-                break;
-            case BLACK_BISHOP:
-                regionName = "B_Bishop";
-                break;
-            case BLACK_ROOK:
-                regionName = "B_Rook";
-                break;
-            case BLACK_QUEEN:
-                regionName = "B_Queen";
-                break;
-            case BLACK_KING:
-                regionName = "B_King";
-                break;
-            default:
-                return null;
-        }
+        batch.setColor(1, 1, 1, parentAlpha);
         
-        return pieceAtlas.findRegion(regionName);
-    }
-    
-    /**
-     * Updates the bounds to match the board renderer.
-     */
-    public void updateBounds() {
-        setBounds(
-            boardRenderer.getX(),
-            boardRenderer.getY(),
-            boardRenderer.getWidth(),
-            boardRenderer.getHeight()
+        // Calculate the height based on whether this is a perspective view
+        float drawHeight = themeSetter.isPerspective() ? getHeight() * 2 : getHeight();
+        
+        // For perspective pieces, draw taller and adjust position
+        float yOffset = themeSetter.isPerspective() ? getHeight() : 0;
+        
+        // Draw the piece texture
+        batch.draw(
+            pieceTexture,
+            getX(), getY() - yOffset,
+            getWidth(), drawHeight
         );
     }
     
-    @Override
-    public void dispose() {
-        // The atlas should be disposed by whoever created it
+    /**
+     * Updates the piece texture based on the current theme
+     */
+    public void updateTexture() {
+        this.pieceTexture = themeSetter.getPieceTextureRegion(chessPiece);
+    }
+    
+    /**
+     * Get the current square this piece is on
+     */
+    public Square getCurrentSquare() {
+        return currentSquare;
+    }
+    
+    /**
+     * Set the current square this piece is on
+     */
+    public void setCurrentSquare(Square square) {
+        this.currentSquare = square;
+        snapToSquare(square);
+    }
+    
+    /**
+     * Get the chess piece
+     */
+    public Piece getChessPiece() {
+        return chessPiece;
+    }
+    
+    /**
+     * Get the side (color) of this piece
+     */
+    public Side getPieceSide() {
+        return chessPiece.getPieceSide();
+    }
+    
+    /**
+     * Get the player who controls this piece
+     */
+    public ChessPlayer getPlayer() {
+        return player;
     }
 }

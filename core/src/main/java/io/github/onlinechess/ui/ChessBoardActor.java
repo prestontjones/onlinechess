@@ -9,19 +9,16 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.scenes.scene2d.InputEvent;
-import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.utils.Disposable;
 import com.github.bhlangonijr.chesslib.Square;
 
 /**
- * ChessBoardRenderer handles rendering a chess board texture and mapping
+ * ChessBoardActor handles rendering a chess board texture and mapping
  * between screen coordinates and chess squares.
  */
-public class ChessBoardRenderer extends Actor implements Disposable {
+public class ChessBoardActor extends Actor implements Disposable {
     // Board states
     private Texture boardTexture;
-    private boolean flipped = false;
     private int boardWidth, boardHeight;
     private float boardScale = 1.0f;
     private float minSize = 320f; // Minimum board size in pixels
@@ -30,40 +27,46 @@ public class ChessBoardRenderer extends Actor implements Disposable {
     // Square mapping
     private Map<Square, Rectangle> squareRectangles = new HashMap<>();
     
-    // Board style - could be expanded to support multiple styles
-    private String boardTexturePath = "chess boards/board_plain_01.png";
-    
     // Border constant - adjust based on your pixel art
     private final int BORDER_SIZE = 7;
-    
-    // Creates a new chess board renderer.
-    public ChessBoardRenderer() {
-        loadBoardTexture();
-        addListener(new InputListener() {
-            @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                // This could handle square selection when clicked
-                Square square = screenToSquare(x, y);
-                if (square != null) {
-                    Gdx.app.log("ChessBoard", "Square clicked: " + square.name());
-                    return true;
-                }
-                return false;
-            }
-        });
+
+    /**
+     * Constructor to initialize
+     */
+    public ChessBoardActor() {
+        // Default construction
     }
 
-    // Loads the board texture and sets initial dimensions.
-    private void loadBoardTexture() {
-        boardTexture = new Texture(Gdx.files.internal(boardTexturePath));
+    /**
+     * Sets the board texture
+     * @param texture The texture to use for the board
+     */
+    public void setTexture(Texture texture) {
+        
+        boardTexture = texture;
         boardWidth = boardTexture.getWidth();
         boardHeight = boardTexture.getHeight();
-        setSize(boardWidth, boardHeight);
         calculateSquarePositions();
     }
     
+    /**
+     * Sets the board texture from a file path
+     * @param texturePath The path to the texture file
+     */
+    public void setBoardTexture(String texturePath) {
+        if (boardTexture != null) {
+            boardTexture.dispose();
+        }
+        
+        boardTexture = new Texture(Gdx.files.internal(texturePath));
+        boardWidth = boardTexture.getWidth();
+        boardHeight = boardTexture.getHeight();
+        calculateSquarePositions();
+    }
 
-    //Calculates the positions of all 64 squares on the board.
+    /**
+     * Calculates the positions of all 64 squares on the board.
+     */
     private void calculateSquarePositions() {
         squareRectangles.clear();
         
@@ -75,7 +78,7 @@ public class ChessBoardRenderer extends Actor implements Disposable {
             for (int col = 0; col < 8; col++) {
                 // Calculate the corresponding Square enum value
                 // The Square enum in ChessLib is ordered A1, B1, ..., H8 (from white's perspective)
-                int squareIndex = (flipped ? 7 - row : row) * 8 + (flipped ? 7 - col : col);
+                int squareIndex = row * 8 + col;
                 Square square = Square.values()[squareIndex];
                 
                 // Calculate square position within the board
@@ -91,13 +94,17 @@ public class ChessBoardRenderer extends Actor implements Disposable {
     /**
      * Converts screen coordinates to a chess square.
      * 
-     * @param screenX X coordinate relative to the board
-     * @param screenY Y coordinate relative to the board
+     * @param screenX X coordinate relative to the screen
+     * @param screenY Y coordinate relative to the screen
      * @return The Square at the given coordinates, or null if outside the board
      */
     public Square screenToSquare(float screenX, float screenY) {
+        // Convert the absolute screen coordinates to coordinates relative to this actor
+        float relativeX = screenX - getX();
+        float relativeY = screenY - getY();
+        
         for (Map.Entry<Square, Rectangle> entry : squareRectangles.entrySet()) {
-            if (entry.getValue().contains(screenX, screenY)) {
+            if (entry.getValue().contains(relativeX, relativeY)) {
                 return entry.getKey();
             }
         }
@@ -113,46 +120,35 @@ public class ChessBoardRenderer extends Actor implements Disposable {
     public Vector2 squareToScreen(Square square) {
         Rectangle rect = squareRectangles.get(square);
         if (rect != null) {
-            return new Vector2(rect.x, rect.y);
+            // Return absolute screen coordinates by adding this actor's position
+            return new Vector2(getX() + rect.x, getY() + rect.y);
         }
         return null;
     }
     
     /**
      * Gets the rectangle representing a chess square.
-     *
-     * @param square The chess square
-     * @return Rectangle representing the square's bounds
      */
     public Rectangle getSquareRectangle(Square square) {
         return squareRectangles.get(square);
     }
     
-    public void flipBoard() {
-        flipped = !flipped;
-        calculateSquarePositions();
-    }
-    
-    public boolean isFlipped() {
-        return flipped;
+    /**
+     * Gets the size of a chess square
+     */
+    public float getSquareSize() {
+        if (squareRectangles.isEmpty()) return 0;
+        // All squares are the same size, so just grab the first one
+        return squareRectangles.values().iterator().next().width;
     }
     
     /**
-     * Sets a new board texture.
-     * 
-     * @param texturePath Path to the board texture
+     * Renders the Board
      */
-    public void setBoardTexture(String texturePath) {
-        if (boardTexture != null) {
-            boardTexture.dispose();
-        }
-        
-        boardTexturePath = texturePath;
-        loadBoardTexture();
-    }
-    
     @Override
     public void draw(Batch batch, float parentAlpha) {
+        if (boardTexture == null) return;
+        
         batch.setColor(1, 1, 1, parentAlpha);
         
         // Draw the board texture
@@ -174,7 +170,9 @@ public class ChessBoardRenderer extends Actor implements Disposable {
         super.setSize(size, size);
         
         // Calculate the scale factor
-        boardScale = size / boardWidth;
+        if (boardWidth > 0) {
+            boardScale = size / boardWidth;
+        }
         
         // Recalculate square positions with the new size
         calculateSquarePositions();
@@ -187,18 +185,25 @@ public class ChessBoardRenderer extends Actor implements Disposable {
         super.setBounds(x, y, size, size);
         
         // Calculate the scale factor
-        boardScale = size / boardWidth;
+        if (boardWidth > 0) {
+            boardScale = size / boardWidth;
+        }
         
         // Recalculate square positions with the new size
         calculateSquarePositions();
     }
 
+    /**
+     * Toggle debug mode to show square boundaries
+     */
     public void toggleDebugMode() {
         debugMode = !debugMode;
     }
 
+    /**
+     * Draw debug outlines for squares
+     */
     private void drawDebugSquares(Batch batch) {
-        
         // Simple 1-pixel white texture for drawing lines
         Texture debugTexture = new Texture(Gdx.files.internal("raw os8ui/white.png"));
         
@@ -209,9 +214,6 @@ public class ChessBoardRenderer extends Actor implements Disposable {
                 Square square = entry.getKey();
                 
                 // Different colors for ranks and files for better visualization
-                // Files (A-H) alternate between red and blue
-                // Ranks (1-8) have increasing green component
-                
                 int file = square.getFile().ordinal();
                 int rank = square.getRank().ordinal();
                 
@@ -239,7 +241,6 @@ public class ChessBoardRenderer extends Actor implements Disposable {
             }
         } finally {
             // No need to dispose debugTexture here as it could be reused
-            // In a real implementation, you might want to create and dispose this texture once
         }
     }
     
