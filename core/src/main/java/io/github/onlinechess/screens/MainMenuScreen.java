@@ -12,9 +12,9 @@ import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 
 import io.github.onlinechess.Main;
-import io.github.onlinechess.ui.dialogs.HostGameDialog;
 import io.github.onlinechess.ui.dialogs.JoinGameDialog;
 import io.github.onlinechess.ui.dialogs.SettingsDialog;
+import io.github.onlinechess.utils.HostGameDialog;
 
 public class MainMenuScreen extends BaseScreen {
     private Table mainTable;
@@ -103,7 +103,7 @@ public class MainMenuScreen extends BaseScreen {
         offlineButton.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent event, Actor actor) {
                 Gdx.app.log("Chess", "Offline Game button clicked");
-                game.setScreen(new ChessBoardScreen(game));
+                game.setScreen(new ChessBoardScreen(game, false));
             }
         });
         

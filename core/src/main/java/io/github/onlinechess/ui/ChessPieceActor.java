@@ -2,6 +2,7 @@ package io.github.onlinechess.ui;
 
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
@@ -10,14 +11,14 @@ import com.github.bhlangonijr.chesslib.Side;
 import com.github.bhlangonijr.chesslib.Square;
 import com.github.bhlangonijr.chesslib.move.Move;
 
-import io.github.onlinechess.controllers.ChessPieceController;
+import io.github.onlinechess.utils.BoardManager;
 import io.github.onlinechess.utils.ChessPlayer;
 
 /**
  * Renders a chess piece and handles its movement
  */
 public class ChessPieceActor extends Actor {
-    private ChessPieceController controller;
+    private BoardManager boardManager;
     private ChessBoardActor chessBoardActor;
     private ChessThemeSetter themeSetter;
     private TextureRegion pieceTexture;
@@ -37,12 +38,13 @@ public class ChessPieceActor extends Actor {
      * @param player The player who controls this piece
      */
     public ChessPieceActor(ChessBoardActor boardActor, ChessThemeSetter themeSetter, 
-                          Piece piece, Square startSquare, ChessPlayer player) {
+                          Piece piece, Square startSquare, ChessPlayer player, BoardManager boardManager) {
         this.chessBoardActor = boardActor;
         this.themeSetter = themeSetter;
         this.chessPiece = piece;
         this.currentSquare = startSquare;
         this.player = player;
+        this.boardManager = boardManager;
         
         // Get the appropriate texture for this piece
         this.pieceTexture = themeSetter.getPieceTextureRegion(piece);
@@ -93,16 +95,16 @@ public class ChessPieceActor extends Actor {
                 // Find the destination square
                 Square destinationSquare = chessBoardActor.screenToSquare(screenX, screenY);
                 
-                // If the controller is set, request the move
-                if (controller != null && destinationSquare != null && currentSquare != destinationSquare) {
+                // If the board manager is set, request the move
+                if (boardManager != null && destinationSquare != null && currentSquare != destinationSquare) {
                     Move move = new Move(currentSquare, destinationSquare);
-                    boolean moveMade = controller.attemptMove(player, move);
+                    boolean moveMade = boardManager.attemptMove(player, move);
                     if (!moveMade) {
                         // If move is not valid, snap back to original position
                         snapToSquare(currentSquare);
                     }
                 } else {
-                    // If no controller or invalid square, just snap back
+                    // If no board manager or invalid square, just snap back
                     snapToSquare(currentSquare);
                 }
             }
@@ -110,13 +112,6 @@ public class ChessPieceActor extends Actor {
         
         // Initialize position
         snapToSquare(startSquare);
-    }
-    
-    /**
-     * Sets the chess piece controller for this actor
-     */
-    public void setController(ChessPieceController controller) {
-        this.controller = controller;
     }
     
     /**
@@ -128,7 +123,7 @@ public class ChessPieceActor extends Actor {
             currentSquare = square;
             
             // Get the rectangle for the square
-            com.badlogic.gdx.math.Rectangle squareRect = chessBoardActor.getSquareRectangle(square);
+            Rectangle squareRect = chessBoardActor.getSquareRectangle(square);
             if (squareRect != null) {
                 // Calculate the position relative to the board
                 float pieceX = chessBoardActor.getX() + squareRect.x;

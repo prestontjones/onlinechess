@@ -12,14 +12,12 @@ public class ChessPlayer implements Player {
     private int elo;
     private PlayerType type;
     private String description;
-    private final UUID uuid;
     private final Side side;
     private final boolean isHost;
     
-    public ChessPlayer(String name, UUID uuid, Side side, boolean isHost) {
+    public ChessPlayer(String name, Side side, boolean isHost) {
         this.name = name;
-        this.id = uuid.toString();
-        this.uuid = uuid;
+        this.id = UUID.randomUUID().toString(); // Generate a random unique ID
         this.side = side;
         this.isHost = isHost;
         this.elo = 1200; // Default ELO
@@ -68,6 +66,4 @@ public class ChessPlayer implements Player {
     public Side getSide() { return side; }
     
     public boolean isHost() { return isHost; }
-    
-    public UUID getUUID() { return uuid; }
 }

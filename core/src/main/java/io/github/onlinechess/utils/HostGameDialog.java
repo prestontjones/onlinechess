@@ -1,4 +1,4 @@
-package io.github.onlinechess.ui.dialogs;
+package io.github.onlinechess.utils;
 
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -12,6 +12,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 
 import io.github.onlinechess.Main;
 import io.github.onlinechess.screens.MainMenuScreen;
+import io.github.onlinechess.ui.dialogs.BaseDialog;
 
 /**
  * Dialog for hosting a new online game

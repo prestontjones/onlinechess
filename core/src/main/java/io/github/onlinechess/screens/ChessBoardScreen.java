@@ -1,6 +1,9 @@
 package io.github.onlinechess.screens;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
@@ -10,26 +13,34 @@ import com.badlogic.gdx.utils.Align;
 import io.github.onlinechess.Main;
 import io.github.onlinechess.ui.ChessBoardActor;
 import io.github.onlinechess.ui.ChessThemeSetter;
+import io.github.onlinechess.utils.BoardManager;
+import io.github.onlinechess.utils.ChessBoard;
 
 /**
- * Screen that renders a chess board and provides a back button to return to the main menu.
- * Handles only UI rendering and layout, not game logic.
+ * Screen that renders a chess board and provides controls for playing chess.
  */
 public class ChessBoardScreen extends BaseScreen {
     private final ChessBoardActor boardActor;
     private final ChessThemeSetter themeSetter;
     private final Table boardContainer;
     private final Label statusLabel;
+    private final ChessBoard chessBoard;
+    private final BoardManager boardManager;
+    private final Group pieceContainer;
     
     // Current theme
     private String currentTheme = "flat1";
+    
+    // Track fullscreen state
+    private boolean wasFullscreen = false;
     
     /**
      * Creates a new ChessBoardScreen.
      * 
      * @param game The main game instance
+     * @param isOnline Whether this is an online game
      */
-    public ChessBoardScreen(final Main game) {
+    public ChessBoardScreen(final Main game, boolean isOnline) {
         super(game);
         
         // Main layout structure
@@ -50,17 +61,22 @@ public class ChessBoardScreen extends BaseScreen {
         boardContainer = new Table();
         boardContainer.setBackground(skin.getDrawable("window"));
         
-        // Create the chess board actor
+        // Create the board manager
         boardActor = new ChessBoardActor();
-        
-        // Create the theme setter
+        pieceContainer = new Group();
         themeSetter = new ChessThemeSetter(boardActor);
-        
-        // Set the default theme
         themeSetter.setTheme(currentTheme);
+        chessBoard = new ChessBoard(isOnline);
+        boardManager = new BoardManager(
+            pieceContainer,
+            boardActor,
+            themeSetter,
+            chessBoard
+        );
         
         // Add the board to its container
         boardContainer.add(boardActor).expand().fill().pad(10);
+        boardContainer.addActor(pieceContainer); // Add pieces on top of the board
         
         // Add board container to the content table
         contentTable.add(boardContainer).expand().fill().pad(5);
@@ -75,8 +91,17 @@ public class ChessBoardScreen extends BaseScreen {
         // Add main table to stage
         stage.addActor(mainTable);
         
+        // Initialize the board
+        boardManager.initializeStandardBoard();
+        
+        // Immediately update board size to ensure pieces are correctly positioned
+        updateBoardSize();
+        
         // Set initial status message
-        setStatusMessage("Chess Board Ready - Theme: " + currentTheme);
+        updateStatusMessage();
+        
+        // Track current fullscreen state
+        wasFullscreen = Gdx.graphics.isFullscreen();
     }
     
     /**
@@ -91,6 +116,13 @@ public class ChessBoardScreen extends BaseScreen {
         Label titleLabel = new Label("Board Controls", skin, "medium");
         controlPanel.add(titleLabel).expandX().center().padBottom(15).row();
         
+        // Game status info
+        Label gameStatusLabel = new Label("Game Status:", skin);
+        controlPanel.add(gameStatusLabel).expandX().left().padTop(5).padBottom(5).row();
+        
+        Label currentTurnLabel = new Label("Current Turn: White", skin);
+        controlPanel.add(currentTurnLabel).expandX().left().padBottom(15).row();
+        
         // Debug mode button
         TextButton debugButton = new TextButton("Toggle Debug", skin);
         debugButton.addListener(new ChangeListener() {
@@ -100,6 +132,16 @@ public class ChessBoardScreen extends BaseScreen {
             }
         });
         controlPanel.add(debugButton).expandX().fillX().padBottom(10).row();
+        
+        // Update pieces button
+        TextButton updateButton = new TextButton("Update Pieces", skin);
+        updateButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                boardManager.updateAllPiecePositions();
+            }
+        });
+        controlPanel.add(updateButton).expandX().fillX().padBottom(20).row();
         
         // Theme selection buttons
         Label themeLabel = new Label("Board Themes:", skin);
@@ -143,6 +185,7 @@ public class ChessBoardScreen extends BaseScreen {
                 currentTheme = theme;
                 themeSetter.setTheme(theme);
                 setStatusMessage("Theme changed to: " + theme);
+                boardManager.refreshPieceTextures();
             }
         });
         panel.add(button).expandX().fillX().padBottom(5).row();
@@ -155,12 +198,19 @@ public class ChessBoardScreen extends BaseScreen {
         statusLabel.setText(message);
     }
     
-    @Override
-    public void resize(int width, int height) {
-        super.resize(width, height);
-        
+    /**
+     * Updates the status message with the current game state
+     */
+    private void updateStatusMessage() {
+        String gameState = boardManager.getGameStateMessage();
+        setStatusMessage(gameState);
+    }
+    
+    /**
+     * Calculates and applies the ideal board size based on screen dimensions
+     */
+    private void updateBoardSize() {
         // Calculate the ideal board size based on the available space
-        // This ensures the board stays centered and properly sized
         float boardSize = Math.min(
             stage.getWidth() * 0.7f,  // Max 70% of width
             stage.getHeight() * 0.8f   // Max 80% of height
@@ -168,6 +218,60 @@ public class ChessBoardScreen extends BaseScreen {
         
         // Update board container size to maintain aspect ratio
         boardContainer.getCell(boardActor).size(boardSize);
+        
+        // Now tell the board manager to resize the board and update pieces
+        boardManager.updateBoardSize(boardSize);
+    }
+    
+    @Override
+    public void render(float delta) {
+        super.render(delta);
+        
+        // Check for fullscreen toggle
+        boolean isFullscreen = Gdx.graphics.isFullscreen();
+        if (wasFullscreen != isFullscreen) {
+            wasFullscreen = isFullscreen;
+            // Force an update after fullscreen toggle
+            Gdx.app.postRunnable(new Runnable() {
+                @Override
+                public void run() {
+                    updateBoardSize();
+                }
+            });
+        }
+        
+        // Handle F11 key for fullscreen toggle
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F11)) {
+            if (Gdx.graphics.isFullscreen()) {
+                Gdx.graphics.setWindowedMode(1280, 720);
+            } else {
+                Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
+            }
+        }
+        
+        // Update the status message to reflect current game state
+        updateStatusMessage();
+    }
+    
+    @Override
+    public void resize(int width, int height) {
+        super.resize(width, height);
+        
+        // Update board size and piece positions
+        updateBoardSize();
+    }
+    
+    @Override
+    public void show() {
+        super.show();
+        
+        // Ensure pieces are correctly positioned when the screen is shown
+        Gdx.app.postRunnable(new Runnable() {
+            @Override
+            public void run() {
+                updateBoardSize();
+            }
+        });
     }
     
     @Override

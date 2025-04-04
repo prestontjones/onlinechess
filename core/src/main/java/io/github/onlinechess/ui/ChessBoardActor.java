@@ -21,11 +21,11 @@ public class ChessBoardActor extends Actor implements Disposable {
     private Texture boardTexture;
     private int boardWidth, boardHeight;
     private float boardScale = 1.0f;
-    private float minSize = 320f; // Minimum board size in pixels
+    private final float minSize = 320f; // Minimum board size in pixels
     private boolean debugMode = false;
     
     // Square mapping
-    private Map<Square, Rectangle> squareRectangles = new HashMap<>();
+    private final Map<Square, Rectangle> squareRectangles = new HashMap<>();
     
     // Border constant - adjust based on your pixel art
     private final int BORDER_SIZE = 7;
@@ -193,12 +193,11 @@ public class ChessBoardActor extends Actor implements Disposable {
         calculateSquarePositions();
     }
 
-    /**
-     * Toggle debug mode to show square boundaries
-     */
+      // Toggle debug mode to show square boundaries
     public void toggleDebugMode() {
         debugMode = !debugMode;
     }
+
 
     /**
      * Draw debug outlines for squares
