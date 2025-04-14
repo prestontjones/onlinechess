@@ -193,6 +193,10 @@ public class ChessPieceActor extends Actor {
     public Side getPieceSide() {
         return chessPiece.getPieceSide();
     }
+
+    public Piece getPiece() {
+        return chessPiece;
+    }
     
     /**
      * Get the player who controls this piece

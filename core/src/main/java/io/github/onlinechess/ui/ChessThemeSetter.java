@@ -145,7 +145,7 @@ public class ChessThemeSetter {
             return null;
         }
         
-        // Determine the index for the piece (order is PAWN, KNIGHT, ROOK, BISHOP, QUEEN, KING)
+        // Determine the index for the piece (order is PAWN, KNIGHT, ROOK, BISHOP, KING, QUEEN)
         int pieceIndex;
         switch (piece.getPieceType()) {
             case PAWN:
@@ -160,10 +160,10 @@ public class ChessThemeSetter {
             case BISHOP:
                 pieceIndex = 3;
                 break;
-            case QUEEN:
+            case KING:
                 pieceIndex = 4;
                 break;
-            case KING:
+            case QUEEN:
                 pieceIndex = 5;
                 break;
             default:

@@ -41,8 +41,7 @@ public class ChessBoardActor extends Actor implements Disposable {
      * Sets the board texture
      * @param texture The texture to use for the board
      */
-    public void setTexture(Texture texture) {
-        
+    public void setTexture(Texture texture) {    
         boardTexture = texture;
         boardWidth = boardTexture.getWidth();
         boardHeight = boardTexture.getHeight();
@@ -64,8 +63,9 @@ public class ChessBoardActor extends Actor implements Disposable {
         calculateSquarePositions();
     }
 
-    /**
+   /**
      * Calculates the positions of all 64 squares on the board.
+     * Fix: Using correct mapping between ChessLib Square enum and visual board positions
      */
     private void calculateSquarePositions() {
         squareRectangles.clear();
@@ -74,16 +74,18 @@ public class ChessBoardActor extends Actor implements Disposable {
         float effectiveBoardSize = getWidth() - (2 * BORDER_SIZE * boardScale);
         float squareSize = effectiveBoardSize / 8f;
         
-        for (int row = 0; row < 8; row++) {
-            for (int col = 0; col < 8; col++) {
-                // Calculate the corresponding Square enum value
-                // The Square enum in ChessLib is ordered A1, B1, ..., H8 (from white's perspective)
-                int squareIndex = row * 8 + col;
-                Square square = Square.values()[squareIndex];
+        // Iterate through all files (A-H) and ranks (1-8)
+        for (int file = 0; file < 8; file++) {  // A=0, B=1, ..., H=7
+            for (int rank = 0; rank < 8; rank++) {  // 1=0, 2=1, ..., 8=7
+                // Get the Square enum for this file and rank
+                // The formula matches ChessLib's Square enum ordering
+                String squareName = "" + (char)('A' + file) + (rank + 1);
+                Square square = Square.valueOf(squareName);
                 
                 // Calculate square position within the board
-                float x = BORDER_SIZE * boardScale + col * squareSize;
-                float y = BORDER_SIZE * boardScale + (7 - row) * squareSize;
+                // For visual display, we want 1/A at the bottom/left, 8/H at the top/right
+                float x = BORDER_SIZE * boardScale + file * squareSize;
+                float y = BORDER_SIZE * boardScale + rank * squareSize;  // No flipping needed now
                 
                 // Store the rectangle representing this square
                 squareRectangles.put(square, new Rectangle(x, y, squareSize, squareSize));

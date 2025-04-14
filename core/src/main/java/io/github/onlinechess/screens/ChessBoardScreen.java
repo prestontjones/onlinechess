@@ -5,14 +5,19 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.ui.TextField;
+import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
+import com.github.bhlangonijr.chesslib.Side;
 
 import io.github.onlinechess.Main;
 import io.github.onlinechess.ui.ChessBoardActor;
 import io.github.onlinechess.ui.ChessThemeSetter;
+import io.github.onlinechess.ui.dialogs.ConfirmDialog;
 import io.github.onlinechess.utils.BoardManager;
 import io.github.onlinechess.utils.ChessBoard;
 
@@ -23,10 +28,13 @@ public class ChessBoardScreen extends BaseScreen {
     private final ChessBoardActor boardActor;
     private final ChessThemeSetter themeSetter;
     private final Table boardContainer;
-    private final Label statusLabel;
+    private final Label gameStateLabel;
+    private final TextField chatInputField;
+    private final Table chatMessagesTable;
     private final ChessBoard chessBoard;
     private final BoardManager boardManager;
     private final Group pieceContainer;
+    private Window confirmDialog;
     
     // Current theme
     private String currentTheme = "flat1";
@@ -43,23 +51,25 @@ public class ChessBoardScreen extends BaseScreen {
     public ChessBoardScreen(final Main game, boolean isOnline) {
         super(game);
         
-        // Main layout structure
+        // Main layout structure - using a horizontal layout
         Table mainTable = new Table();
         mainTable.setFillParent(true);
         mainTable.pad(10);
         
-        // Game status area at the top
-        statusLabel = new Label("", skin);
-        statusLabel.setAlignment(Align.center);
-        statusLabel.setWrap(true);
-        mainTable.add(statusLabel).expandX().fillX().pad(5).row();
+        // Create three columns: controls, board area, chat area
+        Table controlPanel = createControlPanel();
+        mainTable.add(controlPanel).width(180).fillY().padRight(10);
         
-        // Center content with board on the left and control panel on the right
-        Table contentTable = new Table();
+        // Center content containing board and player info
+        Table centerContent = new Table();
+        
+        // Top player info (Black)
+        Table blackPlayerInfo = createPlayerInfoPanel("Black Player", Side.BLACK);
+        centerContent.add(blackPlayerInfo).fillX().padBottom(5).row();
         
         // Board container (allows proper centering and sizing)
         boardContainer = new Table();
-        boardContainer.setBackground(skin.getDrawable("window"));
+        //boardContainer.setBackground(skin.getDrawable("window"));
         
         // Create the board manager
         boardActor = new ChessBoardActor();
@@ -75,18 +85,64 @@ public class ChessBoardScreen extends BaseScreen {
         );
         
         // Add the board to its container
-        boardContainer.add(boardActor).expand().fill().pad(10);
+        boardContainer.add(boardActor).expand().fill();
         boardContainer.addActor(pieceContainer); // Add pieces on top of the board
         
-        // Add board container to the content table
-        contentTable.add(boardContainer).expand().fill().pad(5);
+        // Add board container to the center content
+        centerContent.add(boardContainer).expand().fill().row();
         
-        // Control panel on the right
-        Table controlPanel = createControlPanel();
-        contentTable.add(controlPanel).width(200).fillY().pad(5);
+        // Bottom player info (White)
+        Table whitePlayerInfo = createPlayerInfoPanel("White Player", Side.WHITE);
+        centerContent.add(whitePlayerInfo).fillX().padTop(5);
         
-        // Add content table to main layout
-        mainTable.add(contentTable).expand().fill().row();
+        // Add center content to main table
+        mainTable.add(centerContent).expand().fill();
+        
+        // Chat and game state area on the right
+        Table rightPanel = new Table();
+        rightPanel.setBackground(skin.getDrawable("window"));
+        rightPanel.pad(10);
+        
+        // Game state information display
+        gameStateLabel = new Label("White's turn to move", skin);
+        gameStateLabel.setWrap(true);
+        rightPanel.add(gameStateLabel).fillX().expandX().pad(5).row();
+        
+        // Divider
+        Table divider = new Table();
+        divider.setBackground(skin.getDrawable("white"));
+        rightPanel.add(divider).fillX().height(2).padTop(5).padBottom(10).row();
+        
+        // Chat area title
+        Label chatTitle = new Label("Chat", skin, "medium");
+        rightPanel.add(chatTitle).left().padBottom(5).row();
+        
+        // Chat messages area with scroll pane
+        chatMessagesTable = new Table();
+        chatMessagesTable.top().left();
+        ScrollPane chatScrollPane = new ScrollPane(chatMessagesTable, skin);
+        chatScrollPane.setFadeScrollBars(false);
+        chatScrollPane.setScrollbarsOnTop(true);
+        rightPanel.add(chatScrollPane).expand().fill().row();
+        
+        // Chat input field and send button
+        Table chatInputArea = new Table();
+        chatInputField = new TextField("", skin);
+        chatInputArea.add(chatInputField).expandX().fillX().padRight(5);
+        
+        TextButton sendButton = new TextButton("Send", skin);
+        sendButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                sendChatMessage();
+            }
+        });
+        chatInputArea.add(sendButton).width(60);
+        
+        rightPanel.add(chatInputArea).fillX().padTop(5);
+        
+        // Add right panel to main layout
+        mainTable.add(rightPanel).width(250).fillY().padLeft(10);
         
         // Add main table to stage
         stage.addActor(mainTable);
@@ -105,6 +161,25 @@ public class ChessBoardScreen extends BaseScreen {
     }
     
     /**
+     * Creates a player info panel
+     */
+    private Table createPlayerInfoPanel(String playerName, Side side) {
+        Table playerTable = new Table();
+        playerTable.setBackground(skin.getDrawable("window"));
+        playerTable.pad(5);
+        
+        // Player name and side
+        Label nameLabel = new Label(playerName, skin);
+        playerTable.add(nameLabel).left().expandX();
+        
+        // Add clock or status indicators if needed
+        Label timeLabel = new Label("10:00", skin);
+        playerTable.add(timeLabel).right();
+        
+        return playerTable;
+    }
+    
+    /**
      * Creates the control panel with buttons and info
      */
     private Table createControlPanel() {
@@ -113,17 +188,54 @@ public class ChessBoardScreen extends BaseScreen {
         controlPanel.pad(10);
         
         // Title for panel
-        Label titleLabel = new Label("Board Controls", skin, "medium");
+        Label titleLabel = new Label("Controls", skin, "medium");
         controlPanel.add(titleLabel).expandX().center().padBottom(15).row();
         
-        // Game status info
-        Label gameStatusLabel = new Label("Game Status:", skin);
-        controlPanel.add(gameStatusLabel).expandX().left().padTop(5).padBottom(5).row();
+        // Main control buttons
+        TextButton backButton = new TextButton("Main Menu", skin);
+        backButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                showExitConfirmation();
+            }
+        });
+        controlPanel.add(backButton).expandX().fillX().padBottom(15).row();
         
-        Label currentTurnLabel = new Label("Current Turn: White", skin);
-        controlPanel.add(currentTurnLabel).expandX().left().padBottom(15).row();
+        // Game controls section
+        Label gameControlsLabel = new Label("Game Controls", skin);
+        gameControlsLabel.setAlignment(Align.left);
+        controlPanel.add(gameControlsLabel).expandX().fillX().padBottom(5).row();
         
-        // Debug mode button
+        TextButton resignButton = new TextButton("Resign", skin);
+        controlPanel.add(resignButton).expandX().fillX().padBottom(5).row();
+        
+        TextButton offerDrawButton = new TextButton("Offer Draw", skin);
+        controlPanel.add(offerDrawButton).expandX().fillX().padBottom(15).row();
+        
+        // Visual controls section
+        Label visualLabel = new Label("Visual Settings", skin);
+        visualLabel.setAlignment(Align.left);
+        controlPanel.add(visualLabel).expandX().fillX().padBottom(5).row();
+        
+        // Theme selection - simplified to a dropdown in the future
+        TextButton themeButton = new TextButton("Change Theme", skin);
+        themeButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                // Cycle through themes
+                cycleTheme();
+            }
+        });
+        controlPanel.add(themeButton).expandX().fillX().padBottom(5).row();
+        
+        TextButton flipBoardButton = new TextButton("Flip Board", skin);
+        controlPanel.add(flipBoardButton).expandX().fillX().padBottom(15).row();
+        
+        // Debug tools - could be hidden in production
+        Label debugLabel = new Label("Debug Tools", skin);
+        debugLabel.setAlignment(Align.left);
+        controlPanel.add(debugLabel).expandX().fillX().padBottom(5).row();
+        
         TextButton debugButton = new TextButton("Toggle Debug", skin);
         debugButton.addListener(new ChangeListener() {
             @Override
@@ -131,71 +243,112 @@ public class ChessBoardScreen extends BaseScreen {
                 boardActor.toggleDebugMode();
             }
         });
-        controlPanel.add(debugButton).expandX().fillX().padBottom(10).row();
+        controlPanel.add(debugButton).expandX().fillX().padBottom(5).row();
         
-        // Update pieces button
-        TextButton updateButton = new TextButton("Update Pieces", skin);
-        updateButton.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                boardManager.updateAllPiecePositions();
-            }
-        });
-        controlPanel.add(updateButton).expandX().fillX().padBottom(20).row();
+        // Add spacer at bottom to push content to top
+        controlPanel.add().expand().fill().row();
         
-        // Theme selection buttons
-        Label themeLabel = new Label("Board Themes:", skin);
-        controlPanel.add(themeLabel).expandX().left().padTop(20).padBottom(5).row();
-        
-        // Flat themes
-        addThemeButton(controlPanel, "Flat Theme 1", "flat1");
-        addThemeButton(controlPanel, "Flat Theme 2", "flat2");
-        addThemeButton(controlPanel, "Flat Theme 3", "flat3");
-        addThemeButton(controlPanel, "Flat Theme 4", "flat4");
-        addThemeButton(controlPanel, "Flat Theme 5", "flat5");
-        
-        // Perspective themes
-        Label perspectiveLabel = new Label("Perspective Themes:", skin);
-        controlPanel.add(perspectiveLabel).expandX().left().padTop(20).padBottom(5).row();
-        
-        addThemeButton(controlPanel, "Perspective 1", "perspective1");
-        addThemeButton(controlPanel, "Perspective 2", "perspective2");
-        
-        // Back to menu button
-        TextButton backButton = new TextButton("Back to Menu", skin);
-        backButton.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                game.setScreen(new MainMenuScreen(game));
-            }
-        });
-        controlPanel.add(backButton).expandX().fillX().padTop(30).row();
+        // Game version at bottom
+        Label versionLabel = new Label("Chess v1.0", skin);
+        versionLabel.setAlignment(Align.center);
+        controlPanel.add(versionLabel).expandX().fillX().padTop(15);
         
         return controlPanel;
     }
     
     /**
-     * Adds a theme selection button to the control panel
+     * Cycles through available themes
      */
-    private void addThemeButton(Table panel, String label, final String theme) {
-        TextButton button = new TextButton(label, skin);
-        button.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                currentTheme = theme;
-                themeSetter.setTheme(theme);
-                setStatusMessage("Theme changed to: " + theme);
-                boardManager.refreshPieceTextures();
+    private void cycleTheme() {
+        String[] themes = {"flat1", "flat2", "flat3", "flat4", "flat5", "perspective1", "perspective2"};
+        int currentIndex = 0;
+        
+        // Find current theme index
+        for (int i = 0; i < themes.length; i++) {
+            if (themes[i].equals(currentTheme)) {
+                currentIndex = i;
+                break;
             }
-        });
-        panel.add(button).expandX().fillX().padBottom(5).row();
+        }
+        
+        // Move to next theme (with wrapping)
+        currentIndex = (currentIndex + 1) % themes.length;
+        currentTheme = themes[currentIndex];
+        
+        // Apply the new theme
+        themeSetter.setTheme(currentTheme);
+        setStatusMessage("Theme changed to: " + currentTheme);
+        boardManager.refreshPieceTextures();
     }
     
     /**
-     * Sets the status message displayed above the board
+     * Shows a confirmation dialog when exiting to main menu
+     */
+    private void showExitConfirmation() {
+        // Remove any existing dialog
+        if (confirmDialog != null) {
+            confirmDialog.remove();
+        }
+        
+        // Create a new confirmation dialog
+        confirmDialog = ConfirmDialog.create(
+            "Return to Main Menu?",
+            "Are you sure you want to exit the game? Any unsaved progress will be lost.",
+            new ConfirmDialog.ConfirmListener() {
+                @Override
+                public void onConfirm() {
+                    game.setScreen(new MainMenuScreen(game));
+                }
+            },
+            stage,
+            skin
+        );
+    }
+    
+    /**
+     * Handles sending a chat message
+     */
+    private void sendChatMessage() {
+        String message = chatInputField.getText().trim();
+        if (!message.isEmpty()) {
+            // Add the message to the chat area
+            addChatMessage("You", message);
+            
+            // Clear the input field
+            chatInputField.setText("");
+            chatInputField.setCursorPosition(0);
+        }
+    }
+    
+    /**
+     * Adds a message to the chat area
+     */
+    private void addChatMessage(String sender, String message) {
+        // Create message entry
+        Table messageEntry = new Table();
+        messageEntry.left();
+        
+        // Sender name in bold
+        Label senderLabel = new Label(sender + ": ", skin);
+        messageEntry.add(senderLabel).left();
+        
+        // Message content
+        Label messageLabel = new Label(message, skin);
+        messageLabel.setWrap(true);
+        messageEntry.add(messageLabel).left().expandX().fillX();
+        
+        // Add to messages table
+        chatMessagesTable.add(messageEntry).left().expandX().fillX().padBottom(2).row();
+        
+        // Scroll to bottom
+        chatMessagesTable.invalidate();
+    }
+    
+    /**
+     * Sets the status message displayed in the game state area
      */
     public void setStatusMessage(String message) {
-        statusLabel.setText(message);
+        gameStateLabel.setText(message);
     }
     
     /**
@@ -212,8 +365,8 @@ public class ChessBoardScreen extends BaseScreen {
     private void updateBoardSize() {
         // Calculate the ideal board size based on the available space
         float boardSize = Math.min(
-            stage.getWidth() * 0.7f,  // Max 70% of width
-            stage.getHeight() * 0.8f   // Max 80% of height
+            stage.getWidth() * 0.6f,  // Max 60% of width
+            stage.getHeight() * 0.7f   // Max 70% of height
         );
         
         // Update board container size to maintain aspect ratio
@@ -247,6 +400,11 @@ public class ChessBoardScreen extends BaseScreen {
             } else {
                 Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
             }
+        }
+        
+        // Handle Enter key in chat
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER) && stage.getKeyboardFocus() == chatInputField) {
+            sendChatMessage();
         }
         
         // Update the status message to reflect current game state
