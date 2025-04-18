@@ -6,6 +6,7 @@ plugins {
 dependencies {
     implementation project(":shared")
     implementation "com.esotericsoftware:kryonet:2.22.0-RC1"
+    implementation 'com.github.bhlangonijr:chesslib:1.3.4' // Chess Library
 }
 
 sourceCompatibility = 1.8

@@ -32,6 +32,22 @@ public class ChessBoard {
      * @return Whether the move was successful
      */
     public boolean makeMove(ChessPlayer player, Move move) {
+        // Get the current piece and squares
+        Square from = move.getFrom();
+        Square to = move.getTo();
+        Piece piece = chessBoard.getPiece(from);
+        
+        // Check if this is a pawn promotion move
+        boolean isPromotion = isPawnPromotion(piece, to);
+        
+        // If it's a promotion, create a new move with Queen promotion
+        if (isPromotion) {
+            Piece promotionPiece = (piece.getPieceSide() == Side.WHITE) ? 
+                                   Piece.WHITE_QUEEN : Piece.BLACK_QUEEN;
+            move = new Move(from, to, promotionPiece);
+        }
+        
+        // Now check if the move is allowed
         if (checkIfMoveIsAllowed(move, player)) {
             // If online, we would send the move to the server here
             if (isOnline) {
@@ -46,9 +62,25 @@ public class ChessBoard {
     }
     
     /**
+     * Check if a move is a pawn promotion
+     */
+    private boolean isPawnPromotion(Piece piece, Square to) {
+        // Is it a pawn?
+        if (piece == Piece.WHITE_PAWN) {
+            // White pawn reaching the 8th rank (index 7)
+            return to.getRank().ordinal() == 7;
+        } else if (piece == Piece.BLACK_PAWN) {
+            // Black pawn reaching the 1st rank (index 0)
+            return to.getRank().ordinal() == 0;
+        }
+        return false;
+    }
+    
+    /**
      * Check if a move is allowed for the player
      */
     private boolean checkIfMoveIsAllowed(Move requestedMove, ChessPlayer player) {
+        
         // Check if it's the player's turn
         if (!player.getSide().equals(chessBoard.getSideToMove())) {
             return false;

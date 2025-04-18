@@ -153,19 +153,44 @@ public class BoardManager {
         Square from = move.getFrom();
         Square to = move.getTo();
         
-        // Check if a piece is being captured
+        // Get the piece that was at the source before the move
+        Piece originalPiece = null;
+        ChessPieceActor piece = piecesBySquare.remove(from);
+        if (piece != null) {
+            originalPiece = piece.getChessPiece();
+        }
+        
+        // Get the current piece at the destination after the move
+        Piece currentPiece = chessBoard.getPiece(to);
+        
+        // Check if this is a promotion by comparing the piece types
+        boolean isPromotion = originalPiece != null && 
+                             (originalPiece == Piece.WHITE_PAWN || originalPiece == Piece.BLACK_PAWN) && 
+                             currentPiece != originalPiece;
+        
+        // First, remove any captured piece at the destination
         if (piecesBySquare.containsKey(to)) {
             removePiece(to);
         }
         
-        // Move the piece to the new square
-        ChessPieceActor piece = piecesBySquare.remove(from);
-        if (piece != null) {
-            piece.setCurrentSquare(to);
-            piecesBySquare.put(to, piece);
+        // For promotions, we need to completely replace the pawn with the new piece
+        if (isPromotion) {
+            // Remove the pawn if it still exists
+            if (piece != null) {
+                piece.remove();
+            }
+            
+            // Create the new promotion piece at the destination square
+            createPiece(currentPiece, to);
+        } else {
+            // For regular moves, just update the piece's position
+            if (piece != null) {
+                piece.setCurrentSquare(to);
+                piecesBySquare.put(to, piece);
+            }
         }
         
-        // Handle special moves (castling, en passant, promotion)
+        // Handle special moves (castling, en passant)
         // TODO: Implement special move handling
     }
     
