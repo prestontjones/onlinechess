@@ -1,0 +1,12 @@
+// server/build.gradle
+plugins {
+    id 'java'
+}
+
+dependencies {
+    implementation project(":shared")
+    implementation "com.esotericsoftware:kryonet:2.22.0-RC1"
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
