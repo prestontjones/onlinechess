@@ -1,0 +1,20 @@
+// server / build.gradle
+plugins {
+    id 'java'
+    id 'application'  // For executable server
+}
+
+eclipse.project.name = appName + '-server'
+
+application {
+    mainClass = 'io.github.onlinechess.server.ChessServer'
+}
+
+dependencies {
+    implementation project(":shared")
+    implementation 'com.esotericsoftware:kryonet:2.22.0-RC1'
+    implementation 'com.github.bhlangonijr:chesslib:1.3.4'
+    
+    // For logging (if needed)
+    implementation "com.esotericsoftware:minlog:1.3.1"
+}
